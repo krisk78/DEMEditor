@@ -1,3 +1,5 @@
 /.idea
 /qgis_stubs
 /typings
+.vscode/settings.json
+/DEMEditor/__pycache__
