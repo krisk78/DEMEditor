@@ -2,4 +2,4 @@
 /qgis_stubs
 /typings
 .vscode/settings.json
-/DEMEditor/__pycache__
+DEMEditor/__pycache__

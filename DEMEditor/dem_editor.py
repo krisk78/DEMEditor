@@ -1,8 +1,5 @@
-from qgis.PyQt.QtWidgets import QAction
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QToolBar
-
 from .dem_tool import DEMPolygonTool
+from .toolbar import DEMEditorToolbar
 
 
 class DEMEditor:
@@ -11,79 +8,38 @@ class DEMEditor:
 
         self.iface = iface
 
-        self.action = None
-        self.toolbar = None
-
-        self.tool = None
+        self.toolbar: DEMEditorToolbar | None = None
+        self.canvas_tool: DEMPolygonTool | None = None
 
 
     def initGui(self):
 
-        # Toolbar creation
-        self.toolbar = QToolBar(
-            "DEMEditor",
-            self.iface.mainWindow()
-        )
-
-        self.toolbar.setObjectName(
-            "DEMEditorToolbar"
-        )
-
-        self.iface.mainWindow().addToolBar(
-            self.toolbar
-        )
-
-        # Action button
-        self.action = QAction(
-            "Draw a DEM area",
-            self.iface.mainWindow()
-        )
-
-        self.action.triggered.connect(
-            self.activate_polygon_tool
-        )
-
-
-        # Add button in toolbar
-        self.toolbar.addAction(
-            self.action
-        )
-
-
-        # For now we maintain toolbar menu
-        self.iface.addPluginToMenu(
-            "&DEM Editor",
-            self.action
-        )
+        self.toolbar = DEMEditorToolbar(self)
+        self.toolbar.create()
 
 
     def unload(self):
 
-        if self.tool:
-            self.tool.reset()
+        if self.canvas_tool is not None:
+            self.canvas_tool.reset()
 
-            self.iface.mapCanvas().unsetMapTool(self.tool)
-            self.tool = None
-            
-        if self.toolbar:
-            self.iface.mainWindow().removeToolBar(
-                self.toolbar
+            self.iface.mapCanvas().unsetMapTool(
+                self.canvas_tool
             )
-            self.toolbar = None
 
-        if self.action:
-            self.iface.removePluginMenu(
-                "&DEM Editor",
-                self.action
-            )
+            self.canvas_tool = None
+
+        if self.toolbar is not None:
+            self.toolbar.remove()
 
 
     def activate_polygon_tool(self):
 
-        self.tool = DEMPolygonTool(
+        self.canvas_tool = DEMPolygonTool(
             self.iface.mapCanvas()
         )
 
         self.iface.mapCanvas().setMapTool(
-            self.tool
+            self.canvas_tool
         )
+        
