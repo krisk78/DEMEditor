@@ -11,13 +11,15 @@ from qgis.PyQt.QtGui import QColor
 
 class DEMPolygonTool(QgsMapTool):
 
-    def __init__(self, canvas):
+    def __init__(self, canvas, on_polygon_created):
         super().__init__(canvas)
 
+        self.map_canvas = canvas
+        self.on_polygon_created = on_polygon_created
         self.points = []
 
         self.rubber_band = QgsRubberBand(
-            canvas,
+            self.map_canvas,
             QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
         )
 
@@ -27,16 +29,7 @@ class DEMPolygonTool(QgsMapTool):
 
         self.rubber_band.setWidth(2)
 
-        self.selection_band = QgsRubberBand(
-            canvas,
-            QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
-        )
-
-        self.selection_band.setColor(
-            QColor(0, 255, 0, 120)
-        )
-
-        self.selection_band.setWidth(3)
+        self.selection_bands = []
 
 
     def canvasPressEvent(self, e):
@@ -46,14 +39,8 @@ class DEMPolygonTool(QgsMapTool):
 
         if e.button() == Qt.MouseButton.LeftButton:
 
-            point = self.toMapCoordinates(
-                e.pos()
-            )
-
-            self.points.append(
-                QgsPointXY(point)
-            )
-
+            point = self.toMapCoordinates(e.pos())
+            self.points.append(QgsPointXY(point))
             self.update_polygon()
 
 
@@ -70,16 +57,14 @@ class DEMPolygonTool(QgsMapTool):
 
         if len(self.points) >= 3:
 
-            geom = QgsGeometry.fromPolygonXY(
-                [self.points]
-            )
+            geom = QgsGeometry.fromPolygonXY([self.points])
 
             print(
                 "Polygone created :",
                 geom.asWkt()
             )
 
-            self.keep_selection()
+            self.keep_selection(geom)
 
         self.points.clear()
 
@@ -116,35 +101,73 @@ class DEMPolygonTool(QgsMapTool):
                 QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
             )
 
-        if self.selection_band:
-            self.selection_band.reset(
-                QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
-            )
+        self.clear_selections()
+
+        # if self.selection_band:
+        #     self.selection_band.reset(
+        #         QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
+        #     )
 
 
     def deactivate(self):
 
-        self.reset()
+        self.rubber_band.reset(
+            QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
+        )
+        self.points.clear()
 
         super().deactivate()
 
 
-    def keep_selection(self):
+    def keep_selection(self, geom):
 
-        if len(self.points) < 3:
+        if len(self.points) < 3 or self.rubber_band is None:
             return
+        
+        self.on_polygon_created(geom)
 
-        self.selection_band.reset(
+        # create permanent display band
+        band = QgsRubberBand(
+            self.map_canvas,
             QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
         )
 
-        for p in self.points:
-            self.selection_band.addPoint(
-                p,
-                False
+        band.setColor(QColor(0, 255, 0, 120))
+        band.setWidth(3)
+        band.setToGeometry(geom, None)
+
+        self.selection_bands.append(band)
+
+        # self.selection_band.reset(
+        #     QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
+        # )
+
+        # for p in self.points:
+        #     self.selection_band.addPoint(
+        #         p,
+        #         False
+        #     )
+
+        # self.selection_band.addPoint(
+        #     self.points[0],
+        #     True
+        # )
+
+
+    def remove_last_selection(self):
+
+        if self.selection_bands:
+            band = self.selection_bands.pop()
+            band.reset(
+                QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
             )
 
-        self.selection_band.addPoint(
-            self.points[0],
-            True
-        )
+
+    def clear_selections(self):
+
+        for band in self.selection_bands:
+            band.reset(
+                QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
+            )
+
+        self.selection_bands.clear()
