@@ -1,56 +1,36 @@
 from .dem_tool import DEMPolygonTool
 from .toolbar import DEMEditorToolbar
 from .application_status import ApplicationStatus
+from .edit_context import DEMEditContext
+from .geom_processor import DEMGeometryProcessor
+from .dem_operation import DEMOperation
+from .dem_adjust_elevation import DEMAdjustElevation
 
-from enum import Enum, auto
-from dataclasses import dataclass
-from qgis.core import QgsProject
-
-
-class ElevationMode(Enum):
-    OFFSET = auto()
-    VALUE = auto()
-
-
-class SmoothMode(Enum):
-    LINEAR = auto()
-    PARABOLIC = auto()
-    COSINE = auto()
-
-
-@dataclass
-class DEMOperation:
-
-    elevation_mode: ElevationMode = ElevationMode.OFFSET
-
-    elevation_offset: float = 0.0
-    elevation_value: float = 0.0
-
-    elevation_min: float | None = None
-    elevation_max: float | None = None
-
-    elevation_threshold: float = 1.0
-
-    smooth_mode: SmoothMode = SmoothMode.LINEAR
+from qgis.core import QgsProject, QgsRasterLayer
+from qgis.gui import QgisInterface, QgsMapCanvas
 
 
 class DEMEditor:
 
-    def __init__(self, iface):
+    def __init__(self, iface: QgisInterface):
 
         self.iface = iface
 
         self.toolbar: DEMEditorToolbar | None = None
 
-        self.current_layer = None
-        self.source_layer = None
+        self.current_layer: QgsRasterLayer | None = None
         
         self.selected_geometries = []
         self.canvas_tool: DEMPolygonTool | None = None
 
-        self.dem_operation = DEMOperation()
-
         self.application_status: ApplicationStatus = ApplicationStatus()
+
+        map_canvas = self.iface.mapCanvas()
+        assert map_canvas is not None
+        self.map_canvas: QgsMapCanvas = map_canvas
+        self.map_canvas.mapToolSet.connect(
+            self.on_map_tool_changed
+        )
 
 
     def initGui(self):
@@ -62,10 +42,17 @@ class DEMEditor:
 
     def unload(self):
 
+        try:
+            self.map_canvas.mapToolSet.disconnect(
+                self.on_map_tool_changed
+            )
+        except TypeError:
+            pass
+
         if self.canvas_tool is not None:
             self.canvas_tool.reset()
 
-            self.iface.mapCanvas().unsetMapTool(
+            self.map_canvas.unsetMapTool(
                 self.canvas_tool
             )
 
@@ -88,12 +75,13 @@ class DEMEditor:
         
     def activate_polygon_tool(self):
 
-        self.canvas_tool = DEMPolygonTool(
-            self.iface.mapCanvas(),
-            self.add_polygon
-        )
+        if self.canvas_tool is None:
+            self.canvas_tool = DEMPolygonTool(
+                self.iface.mapCanvas(),
+                self.add_polygon
+            )
 
-        self.iface.mapCanvas().setMapTool(
+        self.map_canvas.setMapTool(
             self.canvas_tool
         )
 
@@ -106,7 +94,7 @@ class DEMEditor:
     def deactivate_polygon_tool(self):
 
         if self.canvas_tool is not None:
-            self.iface.mapCanvas().unsetMapTool(
+            self.map_canvas.unsetMapTool(
             self.canvas_tool
         )
         
@@ -120,9 +108,46 @@ class DEMEditor:
             self.toolbar.update_actions(self.application_status)
 
 
+    def prepare_operation(self) -> DEMEditContext:
 
-    def correct_altitude(self):
-        pass
+        instance = QgsProject.instance()
+        if (
+            instance is not None
+            and self.current_layer is not None
+            and instance.mapLayer(self.current_layer.id()) is None
+        ):
+            self.current_layer = None
+
+        context = DEMEditContext(
+            input_layer=self.current_layer,
+            geometries=DEMGeometryProcessor.prepare(
+                self.selected_geometries
+            )
+        )
+        return context
+    
+
+    def execute_operation(self, operation: DEMOperation):
+
+        context = self.prepare_operation()
+        new_layer = operation.run(context)
+        self.end_operation(new_layer)
+    
+
+    def end_operation(self, new_layer: QgsRasterLayer | None):
+
+        if new_layer is not None:
+            instance = QgsProject.instance()
+            if self.current_layer is not None and instance is not None:
+                instance.removeMapLayer(self.current_layer.id())
+            self.current_layer = new_layer
+
+            self.application_status.has_result_layer = True
+            self.reset_step()
+
+
+    def adjust_elevations(self):
+        self.execute_operation(DEMAdjustElevation())
 
 
     def smooth_steps(self):
@@ -147,25 +172,24 @@ class DEMEditor:
 
         self.selected_geometries.clear()
         self.application_status.has_selection = False
+        if self.toolbar is not None:
+            self.toolbar.update_actions(self.application_status)
 
         # reset the canvas tool
         if self.canvas_tool is not None:
             self.canvas_tool.reset()
 
             # unset the map tool
-            self.iface.mapCanvas().unsetMapTool(
+            self.map_canvas.unsetMapTool(
                 self.canvas_tool
             )
 
             self.canvas_tool = None
-        
-        self.dem_operation = DEMOperation()
 
 
     def reset_session(self):
 
         self.reset_step()
-        self.source_layer = None
         self.current_layer = None
 
         self.application_status = ApplicationStatus()
@@ -174,7 +198,6 @@ class DEMEditor:
             self.toolbar.update_actions(self.application_status)
             if self.toolbar.select_polygon_action is not None:
                 self.toolbar.select_polygon_action.setChecked(False)
-
 
 
     def finish_session(self):

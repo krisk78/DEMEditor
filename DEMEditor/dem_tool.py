@@ -103,11 +103,6 @@ class DEMPolygonTool(QgsMapTool):
 
         self.clear_selections()
 
-        # if self.selection_band:
-        #     self.selection_band.reset(
-        #         QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
-        #     )
-
 
     def deactivate(self):
 
@@ -137,21 +132,6 @@ class DEMPolygonTool(QgsMapTool):
         band.setToGeometry(geom, None)
 
         self.selection_bands.append(band)
-
-        # self.selection_band.reset(
-        #     QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
-        # )
-
-        # for p in self.points:
-        #     self.selection_band.addPoint(
-        #         p,
-        #         False
-        #     )
-
-        # self.selection_band.addPoint(
-        #     self.points[0],
-        #     True
-        # )
 
 
     def remove_last_selection(self):

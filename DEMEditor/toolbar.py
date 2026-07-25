@@ -27,9 +27,9 @@ class DEMEditorToolbar:
             checkable=True
         )
 
-        self.elevation_correction_action = self.add_action(
-            "Correct altitude",
-            self.plugin.correct_altitude,
+        self.adjust_elevation_action = self.add_action(
+            "Adjust elevations",
+            self.plugin.adjust_elevations,
             ":/images/themes/default/propertyicons/elevationscale.svg",
             theme_icon=False
         )
@@ -124,14 +124,12 @@ class DEMEditorToolbar:
             not application_status.operation_in_progress
         )
 
-        self.elevation_correction_action.setEnabled(
-            not application_status.selection_in_progress
-            and application_status.has_selection
+        self.adjust_elevation_action.setEnabled(
+            application_status.has_selection
         )
 
         self.smooth_steps_action.setEnabled(
-            not application_status.selection_in_progress
-            and application_status.has_selection
+            application_status.has_selection
         )
 
         self.undo_last_polygon_action.setEnabled(
