@@ -1,6 +1,6 @@
 from .pixel_filter import *
 from .io import *
-from . import adjust_elevation_context
+from . import algorithm_context
 
 from qgis.core import (
     Qgis,
@@ -144,7 +144,7 @@ class AdjustElevationAlgorithm(QgsProcessingAlgorithm):
         
         filter: PixelFilter|None = None
         if _dem_editor:
-            filter = adjust_elevation_context._filter
+            filter = algorithm_context._filter
         if filter is None:
             filter = FullRasterFilter()
         
@@ -174,11 +174,6 @@ class AdjustElevationAlgorithm(QgsProcessingAlgorithm):
             nodata=raster_data.nodata
         )
 
-        if _dem_editor:
-            adjust_elevation_context._output_layer = (
-                QgsRasterLayer(output, "Adjusted elevation")
-            )
-        
         return {
             self.OUTPUT: output
         }

@@ -1,0 +1,48 @@
+from .edit_context import DEMEditContext
+from .pixel_filter import PolygonFilter
+from .qt_utils import set_parameter_enabled
+from . import algorithm_context
+
+from typing import Type, cast
+
+from qgis.core import QgsProcessingAlgorithm, QgsProject, QgsRasterLayer
+import processing
+
+
+class DEMAlgorithmWrapper:
+
+    def run(self, algorithm_cls: Type[QgsProcessingAlgorithm], context: DEMEditContext):
+
+        alg = algorithm_cls()
+
+        parameters = {
+            algorithm_cls.INPUT: context.input_layer, # pyright: ignore[reportAttributeAccessIssue]
+            algorithm_cls.OUTPUT: "TEMPORARY_OUTPUT", # pyright: ignore[reportAttributeAccessIssue]
+            algorithm_cls._DEMEDITOR: True # pyright: ignore[reportAttributeAccessIssue]
+        }
+
+        dlg = processing.createAlgorithmDialog(alg, parameters)
+        assert dlg is not None
+        dlg = cast(processing.AlgorithmDialog, dlg)
+
+        if context.input_layer is not None:
+            set_parameter_enabled(dlg, "INPUT", False)
+        set_parameter_enabled(dlg, "OUTPUT", False)
+
+        algorithm_context._filter = PolygonFilter(context.geometries)
+        result = dlg.exec()
+
+        output = dlg.results().get("OUTPUT")
+        output_layer = None
+        instance = QgsProject.instance()
+        if instance is not None:
+            for layer in instance.mapLayers().values():
+                if (
+                    isinstance(layer, QgsRasterLayer)
+                    and layer.source() == output
+                ):
+                    output_layer = layer
+                    break
+
+        return output_layer
+    

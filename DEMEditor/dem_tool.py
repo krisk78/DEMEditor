@@ -23,9 +23,8 @@ class DEMPolygonTool(QgsMapTool):
             QgsWkbTypes.PolygonGeometry # pyright: ignore[reportAttributeAccessIssue]
         )
 
-        self.rubber_band.setColor(
-            QColor(255, 0, 0, 120)
-        )
+        self.rubber_band.setColor(QColor(255, 0, 0, 120))
+        self.rubber_band.setFillColor(QColor(255, 0, 0, 80))
 
         self.rubber_band.setWidth(2)
 
@@ -56,14 +55,7 @@ class DEMPolygonTool(QgsMapTool):
     def finish_polygon(self):
 
         if len(self.points) >= 3:
-
             geom = QgsGeometry.fromPolygonXY([self.points])
-
-            print(
-                "Polygone created :",
-                geom.asWkt()
-            )
-
             self.keep_selection(geom)
 
         self.points.clear()
@@ -128,6 +120,7 @@ class DEMPolygonTool(QgsMapTool):
         )
 
         band.setColor(QColor(0, 255, 0, 120))
+        band.setFillColor(QColor(0, 255, 0, 80))
         band.setWidth(3)
         band.setToGeometry(geom, None)
 

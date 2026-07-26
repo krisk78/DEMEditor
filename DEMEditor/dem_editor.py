@@ -3,10 +3,13 @@ from .toolbar import DEMEditorToolbar
 from .application_status import ApplicationStatus
 from .edit_context import DEMEditContext
 from .geom_processor import DEMGeometryProcessor
-from .dem_operation import DEMOperation
-from .dem_adjust_elevation import DEMAdjustElevation
+from .dem_algo_wrapper import DEMAlgorithmWrapper
+from .adjust_elevation_algo import AdjustElevationAlgorithm
+from .smooth_steps_algo import SmoothStepsAlgorithm
 
-from qgis.core import QgsProject, QgsRasterLayer
+from typing import Type
+
+from qgis.core import QgsProject, QgsRasterLayer, QgsProcessingAlgorithm
 from qgis.gui import QgisInterface, QgsMapCanvas
 
 
@@ -31,6 +34,11 @@ class DEMEditor:
         self.map_canvas.mapToolSet.connect(
             self.on_map_tool_changed
         )
+
+        instance = QgsProject.instance()
+        if instance is None:
+            raise ValueError("Unable to retrieve project instance")
+        self.instance: QgsProject = instance
 
 
     def initGui(self):
@@ -110,11 +118,9 @@ class DEMEditor:
 
     def prepare_operation(self) -> DEMEditContext:
 
-        instance = QgsProject.instance()
         if (
-            instance is not None
-            and self.current_layer is not None
-            and instance.mapLayer(self.current_layer.id()) is None
+            self.current_layer is not None
+            and self.instance.mapLayer(self.current_layer.id()) is None
         ):
             self.current_layer = None
 
@@ -127,19 +133,19 @@ class DEMEditor:
         return context
     
 
-    def execute_operation(self, operation: DEMOperation):
+    def execute_operation(self, algorithm_cls: Type[QgsProcessingAlgorithm]):
 
         context = self.prepare_operation()
-        new_layer = operation.run(context)
+        new_layer = DEMAlgorithmWrapper().run(algorithm_cls, context)
         self.end_operation(new_layer)
     
 
     def end_operation(self, new_layer: QgsRasterLayer | None):
 
         if new_layer is not None:
-            instance = QgsProject.instance()
-            if self.current_layer is not None and instance is not None:
-                instance.removeMapLayer(self.current_layer.id())
+            if self.current_layer is not None:
+                self.instance.removeMapLayer(self.current_layer.id())
+                self.map_canvas.refresh()
             self.current_layer = new_layer
 
             self.application_status.has_result_layer = True
@@ -147,11 +153,11 @@ class DEMEditor:
 
 
     def adjust_elevations(self):
-        self.execute_operation(DEMAdjustElevation())
+        self.execute_operation(AdjustElevationAlgorithm)
 
 
     def smooth_steps(self):
-        pass
+        self.execute_operation(SmoothStepsAlgorithm)
 
 
     def undo_last_polygon(self):
@@ -206,12 +212,11 @@ class DEMEditor:
 
     def cancel_session(self):
 
-        instance = QgsProject.instance()
-
-        if  instance is not None and self.current_layer is not None:
-            instance.removeMapLayer(
+        if  self.current_layer is not None:
+            self.instance.removeMapLayer(
                 self.current_layer.id()
             )
+            self.map_canvas.refresh()
         
         self.reset_session()
 
