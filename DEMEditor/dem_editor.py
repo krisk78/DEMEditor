@@ -7,7 +7,7 @@ from .dem_algo_wrapper import DEMAlgorithmWrapper
 from .adjust_elevation_algo import AdjustElevationAlgorithm
 from .smooth_steps_algo import SmoothStepsAlgorithm
 
-from typing import Type
+from typing import Type, cast
 
 from qgis.core import QgsProject, QgsRasterLayer, QgsProcessingAlgorithm
 from qgis.gui import QgisInterface, QgsMapCanvas
@@ -21,7 +21,7 @@ class DEMEditor:
 
         self.toolbar: DEMEditorToolbar | None = None
 
-        self.current_layer: QgsRasterLayer | None = None
+        self.current_layer_id: str | None = None
         
         self.selected_geometries = []
         self.canvas_tool: DEMPolygonTool | None = None
@@ -118,14 +118,14 @@ class DEMEditor:
 
     def prepare_operation(self) -> DEMEditContext:
 
-        if (
-            self.current_layer is not None
-            and self.instance.mapLayer(self.current_layer.id()) is None
-        ):
-            self.current_layer = None
+        layer = None
+        if self.current_layer_id:
+            layer = self.instance.mapLayer(self.current_layer_id)
+            if layer is None:
+                self.current_layer_id = None
 
         context = DEMEditContext(
-            input_layer=self.current_layer,
+            input_layer=cast(QgsRasterLayer, layer),
             geometries=DEMGeometryProcessor.prepare(
                 self.selected_geometries
             )
@@ -143,10 +143,12 @@ class DEMEditor:
     def end_operation(self, new_layer: QgsRasterLayer | None):
 
         if new_layer is not None:
-            if self.current_layer is not None:
-                self.instance.removeMapLayer(self.current_layer.id())
-                self.map_canvas.refresh()
-            self.current_layer = new_layer
+            if self.current_layer_id is not None:
+                layer = self.instance.mapLayer(self.current_layer_id)
+                if layer:
+                    self.instance.removeMapLayer(self.current_layer_id)
+                    self.map_canvas.refresh()
+            self.current_layer_id = new_layer.id()
 
             self.application_status.has_result_layer = True
             self.reset_step()
@@ -196,7 +198,7 @@ class DEMEditor:
     def reset_session(self):
 
         self.reset_step()
-        self.current_layer = None
+        self.current_layer_id = None
 
         self.application_status = ApplicationStatus()
 
@@ -212,11 +214,11 @@ class DEMEditor:
 
     def cancel_session(self):
 
-        if  self.current_layer is not None:
-            self.instance.removeMapLayer(
-                self.current_layer.id()
-            )
-            self.map_canvas.refresh()
+        if self.current_layer_id:
+            layer = self.instance.mapLayer(self.current_layer_id)
+            if layer:
+                self.instance.removeMapLayer(self.current_layer_id)
+                self.map_canvas.refresh()
         
         self.reset_session()
 

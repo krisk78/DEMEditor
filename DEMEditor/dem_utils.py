@@ -14,7 +14,8 @@ def meters_to_pixels(layer: QgsRasterLayer, distance: float) -> int:
     if pixel_size <= 0:
         raise ValueError("Invalid raster pixel size")
 
-    return max(1, np.ceil(distance / pixel_size))
+    pixels = int(np.ceil(distance / pixel_size))
+    return max(1, pixels)
 
 
 def group_points(points: np.ndarray) -> list[list[tuple[int, int]]]:

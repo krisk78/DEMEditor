@@ -2,6 +2,7 @@ from .pixel_filter import *
 from .io import *
 from . import algorithm_context
 from .dem_utils import meters_to_pixels, group_points
+from .dem_debug import *
 
 from qgis.core import (
     Qgis,
@@ -18,7 +19,7 @@ from qgis.core import (
 
 from qgis.PyQt.QtCore import QCoreApplication
 
-from enum import Enum, auto
+from enum import Enum
 import numpy as np
 
 
@@ -41,7 +42,6 @@ class FrontPoint:
     col: int
     normal: tuple[float, float]
     z_ref: float
-    z_target: float
 
 
 class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
@@ -49,6 +49,7 @@ class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
     INPUT = "INPUT"
     THRESHOLD = "THRESHOLD"
     RADIUS = "RADIUS"
+    ANGLE = "ANGLE"
     PRIORITY = "PRIORITY"
     INTERPOL = "INTERPOL"
     MIN_ELEVATION = "MIN_ELEVATION"
@@ -56,7 +57,7 @@ class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
     OUTPUT = "OUTPUT"
     _DEMEDITOR = "_DEMEDITOR"
 
-    CIRCLE_RADIUS:int = 7
+#    CIRCLE_RADIUS:int = 2
 
 
     def __init__(self):
@@ -113,8 +114,18 @@ class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber(
                 self.RADIUS,
                 self.tr("Smooth radius (meters)"),
-                QgsProcessingParameterNumber.Integer, # pyright: ignore[reportAttributeAccessIssue]
-                defaultValue=15,
+                QgsProcessingParameterNumber.Double, # pyright: ignore[reportAttributeAccessIssue]
+                defaultValue=15.0,
+                minValue=0.0
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.ANGLE,
+                self.tr("Smooth angle (degrees)"),
+                QgsProcessingParameterNumber.Double, # pyright: ignore[reportAttributeAccessIssue]
+                defaultValue=15.0,
                 minValue=0
             )
         )
@@ -185,7 +196,8 @@ class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
 
         input_layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         threshold = self.parameterAsDouble(parameters, self.THRESHOLD, context)
-        radius = self.parameterAsInt(parameters, self.RADIUS, context)
+        radius = self.parameterAsDouble(parameters, self.RADIUS, context)
+        angle = self.parameterAsDouble(parameters, self.ANGLE, context)
         interpol = self.parameterAsInt(parameters, self.INTERPOL, context)
         priority = self.parameterAsInt(parameters, self.PRIORITY, context)
         min_elevation = self.parameterAsDouble(parameters, self.MIN_ELEVATION, context)
@@ -199,7 +211,7 @@ class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
         transition_radius = meters_to_pixels(input_layer, radius)
         transition_type = TransitionType(interpol)
         edge_priority = EdgePriority(priority)
-        circle_radius = meters_to_pixels(input_layer, self.CIRCLE_RADIUS)
+#        circle_radius = meters_to_pixels(input_layer, self.CIRCLE_RADIUS)
 
         filter: PixelFilter|None = None
         if _dem_editor:
@@ -217,7 +229,7 @@ class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-        front_mask = detect_front_pixels(
+        front_pixels = detect_front_pixels(
             array=raster_data.array,
             layer=input_layer,
             threshold=threshold,
@@ -225,19 +237,26 @@ class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
             pixel_filter=combined_filter
         )
 
+        if len(front_pixels) == 0:
+            raise QgsProcessingException(
+                "No front point matching conditions has been detected."
+                " Processing cancelled."
+                " Review polygon selection and/or processing parameters.")
+
         front_directions = compute_front_directions(
             array=raster_data.array,
-            front_mask=front_mask,
-            transition_radius=transition_radius,
-            circle_radius=circle_radius,
-            edge_priority=edge_priority
+            front_pixels=front_pixels,
+            edge_priority=edge_priority,
+            threshold=threshold
         )
 
         smooth_front_transitions(
             array=raster_data.array,
             front_points=front_directions,
             transition_radius=transition_radius,
-            transition_type=transition_type
+            transition_angle=angle,
+            transition_type=transition_type,
+            edge_priority=edge_priority
         )
 
         save_geotiff(
@@ -259,10 +278,10 @@ def detect_front_pixels(
         threshold: float,
         edge_priority: EdgePriority,
         pixel_filter: PixelFilter
-) -> np.ndarray:
+) -> list[tuple[int, int]]:
 
+    front_pixels = []
     height, width = array.shape
-    front_mask = np.zeros(array.shape, bool)
 
     candidate_windows = pixel_filter.candidate_windows(layer)
     if candidate_windows is None:
@@ -294,91 +313,84 @@ def detect_front_pixels(
                 if edge_priority is EdgePriority.LOWER_ELEVATION:
                     # searching a high pixel with a low pixel neighbor
                     if any(z - zn >= threshold for zn in neighbors):
-                        front_mask[row, col] = True
+                        front_pixels.append((row, col))
 
                 elif edge_priority is EdgePriority.HIGHER_ELEVATION:
                     # searching a low pixel with a high pixel neighbor
                     if any(zn - z >= threshold for zn in neighbors):
-                        front_mask[row, col] = True
+                        front_pixels.append((row, col))
 
-    return front_mask
+    return front_pixels
 
 
 def compute_front_directions(
         array: np.ndarray,
-        front_mask: np.ndarray,
-        transition_radius: int,
-        circle_radius: int,
-        edge_priority: EdgePriority
+        front_pixels: list[tuple[int, int]],
+        edge_priority: EdgePriority,
+        threshold: float
 ) -> list[FrontPoint]:
 
-    height, width = array.shape
     results = []
-    circle_mask = create_circle_mask(circle_radius)
 
-    front_pixels = np.argwhere(front_mask)
+    neighbors = [
+        (-1, -1), (-1, 0), (-1, 1),
+        (0, -1),           (0, 1),
+        (1, -1),  (1, 0),  (1, 1)
+    ]
 
     for row, col in front_pixels:
 
-        local_front = front_mask[
-            row-circle_radius:row+circle_radius+1,
-            col-circle_radius:col+circle_radius+1
-        ]
-        intersections = local_front & circle_mask
-
-        points = np.argwhere(intersections)
-        groups = group_points(points)
-        assert groups and len(groups) <= 2
-        inter_points = []
-        for group in groups:
-            p = np.mean(group, axis = 0)
-            inter_points.append((float(p[0]), float(p[1])))
-        if len(inter_points) == 1:
-            inter_points.append((float(row), float(col)))
-
-        dy = inter_points[1][0] - inter_points[0][0]
-        dx = inter_points[1][1] - inter_points[0][1]
-
-        ny = -dx
-        nx = dy
-        norm = np.hypot(nx, ny)
-        if norm:
-            nx /= norm
-            ny /= norm
-
-        # can cases exist that do not give the expected elevation?
-        # to check and consider a fallback,
-        # but it will need the threshold value to be able to check
-        z_ref = array[int(round(row - ny)), int(round(col - nx))]
-
+        # find neighbors that matches the threshold condition
+        ref_candidates = []
         z_front = array[row, col]
-        delta_z = z_ref - z_front
-        if (
-            edge_priority is EdgePriority.LOWER_ELEVATION and delta_z > 0
-            or edge_priority is EdgePriority.HIGHER_ELEVATION and delta_z < 0
-        ):
-                ny = -ny
-                nx = -nx
-                z_ref = array[int(round(row - ny)), int(round(col - nx))]
-        delta_z = z_ref - z_front
-        assert delta_z != 0
-        assert (
-            edge_priority is EdgePriority.LOWER_ELEVATION and delta_z < 0
-            or edge_priority is EdgePriority.HIGHER_ELEVATION and delta_z > 0
-        )
+        for dy, dx in neighbors:
+            z = array[row + dy, col + dx]
+            delta_z = z - z_front
+            if(
+                edge_priority is EdgePriority.LOWER_ELEVATION and delta_z <= -threshold
+                or edge_priority is EdgePriority.HIGHER_ELEVATION and delta_z >= threshold
 
-        z_target = array[
-            int(round(row + transition_radius * ny)),
-            int(round(col + transition_radius * nx))
+            ):
+                ref_candidates.append((dy, dx, z))
+        if len(ref_candidates) == 8:
+            # cannot determine the normal in this context
+            continue
+
+        # remove inconsistent points
+        mean_dy = np.mean([c[0] for c in ref_candidates])
+        mean_dx = np.mean([c[1] for c in ref_candidates])
+
+        filtered_candidates = [
+            (dy, dx, z)
+            for dy, dx, z in ref_candidates
+            if dy * mean_dy + dx * mean_dx >= 0
         ]
 
+        assert filtered_candidates
+
+        # calculate the normal
+        mean_dy = np.mean([c[0] for c in filtered_candidates])
+        mean_dx = np.mean([c[1] for c in filtered_candidates])
+
+        norm = np.hypot(mean_dx, mean_dy)
+        if norm == 0:
+            # unable to calculate a reliable normal
+            continue
+        ny = -mean_dy / norm
+        nx = -mean_dx / norm
+
+        # reference elevation to apply at the beginnig of the transition
+        z_ref = np.median([c[2] for c in filtered_candidates])
+
+        # save for transition application
         results.append(
             FrontPoint(
                 row=row,
                 col=col,
                 normal=(ny, nx),
-                z_ref=z_ref,
-                z_target=z_target))
+                z_ref=z_ref
+            )
+        )
 
     return results
 
@@ -387,26 +399,66 @@ def smooth_front_transitions(
         array: np.ndarray,
         front_points: list[FrontPoint],
         transition_radius: int,
-        transition_type: TransitionType
+        transition_angle:float,
+        transition_type: TransitionType,
+        edge_priority: EdgePriority
 ):
 
-    processed = np.zeros(array.shape, bool)
+    source_array = array.copy()
+    half_angle = np.deg2rad(transition_angle / 2.0)
 
     for fp in front_points:
 
-        for i in range(transition_radius + 1):
+        ny, nx = fp.normal
 
-            row = int(round(fp.row + i * fp.normal[0]))
-            col = int(round(fp.col + i * fp.normal[1]))
+        # tangent vector
+        ty = -nx
+        tx = ny
 
-            if processed[row, col]:
-                continue
+        for distance in range(1, transition_radius + 1):
 
-            t = i / transition_radius
-            factor = transition_factor(t, transition_type)
+            # sector opening
+            width = int(round((distance - 1) * np.tan(half_angle)))
 
-            array[row, col] = (fp.z_ref + factor * (fp.z_target - fp.z_ref))
-            processed[row, col] = True
+            for s in range(-width, width + 1):
+
+                row = int(round(fp.row + (distance - 1) * ny + s * ty))
+                col = int(round(fp.col + (distance - 1) * nx + s * tx))
+                row = np.clip(row, 0, array.shape[0]-1)
+                col = np.clip(col, 0, array.shape[1]-1)
+
+                # radius direction
+                vy = distance * ny + s * ty
+                vx = distance * nx + s * tx
+                norm = np.hypot(vx, vy)
+                if norm == 0:
+                    continue
+                vy /= norm
+                vx /= norm
+                dot = ny * vy + nx * vx
+                angular_weight = dot * dot
+
+                # z_target at the radius
+                target_row = int(round(fp.row + transition_radius * vy))
+                target_col = int(round(fp.col + transition_radius * vx))
+                target_row = np.clip(target_row, 0, array.shape[0]-1)
+                target_col = np.clip(target_col, 0, array.shape[1]-1)
+                z_target = source_array[target_row, target_col]
+
+                # transition factor
+                t = distance / transition_radius
+                factor = transition_factor(t, transition_type)
+                factor *= angular_weight
+
+                # new z calculation
+                z_source = source_array[row, col]
+                z_transition = fp.z_ref + factor * (z_target - fp.z_ref)
+                z = z_source + (z_transition - z_source)
+
+                if edge_priority is EdgePriority.LOWER_ELEVATION:
+                    array[row, col] = min(array[row, col], z)
+                else:
+                    array[row, col] = max(array[row, col], z)
 
 
 def create_circle_mask(radius: int) -> np.ndarray:
@@ -426,6 +478,33 @@ def create_circle_mask(radius: int) -> np.ndarray:
                 circle_mask[y, x] = True
 
     return circle_mask
+
+
+def find_masks_intersections(
+        bool_mask: np.ndarray,
+        row: int,
+        col: int,
+        search_mask: np.ndarray,
+        offset_y: int,
+        offset_x: int
+) -> np.ndarray:
+
+    size_y = search_mask.shape[0]
+    size_x = search_mask.shape[1]
+
+    local_lines = bool_mask[
+        row+offset_y:row+offset_y+size_y,
+        col+offset_x:col+offset_x+size_x
+    ]
+
+    intersections = local_lines & search_mask
+
+    points = np.argwhere(intersections)
+
+    points[:, 0] += row + offset_y 
+    points[:, 1] += col + offset_x
+
+    return points
 
 
 def transition_factor(t: float, transition_type: TransitionType) -> float:
