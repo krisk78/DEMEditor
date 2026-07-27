@@ -62,17 +62,17 @@ Earlier QGIS versions may work, but they are not tested and compatibility is not
 1. Load your DEM raster into QGIS.
 2. Use the polygon selection tool to delimit the working area.
 
-Use the mouse left button to add a point. The polygon being edited is displayed in red.
-Use the mouse right button to end the polygon. It is displayed in green.
-You can draw several polygons.
-The button Undo removes the last drawn polygon.
+    Use the mouse left button to add a point. The polygon being edited is displayed in red.
+    Use the mouse right button to end the polygon. It is displayed in green.
+    You can draw several polygons.
+    The button Undo removes the last drawn polygon.
    
 3. Select the processing algorithm.
 4. Configure the algorithm parameters.
 5. Run the algorithm.
 
-The output raster is generated as a temporary layer.
-Each new processing result replaces the previous one and becomes the input raster for subsequent transformations.
+    The output raster is generated as a temporary layer.
+    Each new processing result replaces the previous one and becomes the input raster for subsequent transformations.
 
 6. Repeat the process for next transformations.
 
