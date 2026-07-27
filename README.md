@@ -1,55 +1,19 @@
 # DEMEditor
 
-QGIS plugin for editing and correcting Digital Elevation Models (DEM) for coastal and harbour environments.
+QGIS plugin for editing and correcting Digital Elevation Model (DEM) data.
 
-DEMEditor provides tools to detect elevation discontinuities, identify terrain fronts, and apply controlled elevation transitions while preserving the original DEM structure.
+DEMEditor is designed for local and controlled raster modifications while preserving the surrounding DEM structure.
+It provides tools to edit raster layers through multi-polygon selections, allowing users to apply transformations only to the areas of interest.
 
-The main objective is to simplify the correction of coastal DEM artefacts such as:
+A typical workflow to achieve the same result without DEMEditor is:
+- create a vector layer containing the required polygons;
+- rasterize the polygons;
+- use the resulting raster as an input mask in the raster calculator to apply transformations.
 
-- harbour edges,
-- quays,
-- docks,
-- artificial shore structures,
-- bathymetric transitions,
-- terrain discontinuities caused by DEM resolution or source data merging.
-
----
-
-## Features
-
-### Front detection
-
-Detects terrain fronts based on local elevation differences.
-
-The detection algorithm analyses neighbouring cells and identifies pixels where the elevation difference exceeds a user-defined threshold.
-
-Supported cases:
-
-- lower elevation fronts (land → water / bathymetry transitions),
-- higher elevation fronts (water → structure / embankment transitions).
-
----
-
-### Front direction estimation
-
-For each detected front point, DEMEditor computes a local transition direction.
-
-The direction estimation is based on neighbouring cells matching the selected elevation threshold, allowing the correction direction to follow the actual DEM structure rather than relying on a purely geometric assumption.
-
----
-
-### Smooth elevation transitions
-
-Applies a controlled transition from a reference elevation towards the target elevation.
-
-Features:
-
-- configurable transition radius;
-- configurable angular diffusion sector;
-- multiple interpolation profiles;
-- conflict handling when several transitions overlap.
-
-The algorithm keeps the original DEM values as a reference and only applies corrections according to the selected edge priority.
+With DEMEditor you can open an editing session and:
+- directly draw the polygon selections in the QGIS main window;
+- apply the desired transformation to the selected area;
+- repeat this workflow to perform multiple transformations.
 
 ---
 
