@@ -65,9 +65,6 @@ class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
     OUTPUT = "OUTPUT"
     _DEMEDITOR = "_DEMEDITOR"
 
-#    CIRCLE_RADIUS:int = 2
-
-
     def __init__(self):
         super().__init__()
 

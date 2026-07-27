@@ -35,6 +35,16 @@ class DEMEditorToolbar:
             checkable=True
         )
 
+        self.undo_last_polygon_action = self.add_action(
+            "Undo last polygon",
+            self.plugin.undo_last_polygon,
+            "/mActionUndo.svg"
+        )
+
+        # Séparation entre outils et validation
+        assert self.toolbar is not None
+        self.toolbar.addSeparator()
+
         self.adjust_elevation_action = self.add_action(
             "Adjust elevations",
             self.plugin.adjust_elevations,
@@ -45,13 +55,27 @@ class DEMEditorToolbar:
         self.smooth_steps_action = self.add_action(
             "Smooth elevation steps",
             self.plugin.smooth_steps,
+            "/algorithms/mAlgorithmDistanceMatrix.svg"
+        )
+
+        self.external_algo_action = self.add_action(
+            "External algorithm",
+            self.plugin.external_algorithm,
+            ":/images/themes/default/processingAlgorithm.svg",
+            theme_icon=False
+        )
+
+        self.raster_calc_action = self.add_action(
+            "Raster calculator shortcut",
+            self.plugin.raster_calculator,
             "/algorithms/mAlgorithmRasterCalculator.svg"
         )
 
-        self.undo_last_polygon_action = self.add_action(
-            "Undo last polygon",
-            self.plugin.undo_last_polygon,
-            "/mActionUndo.svg"
+        self.user_expression_action = self.add_action(
+            "Saved user expression",
+            self.plugin.user_expression,
+            ":/images/themes/default/mActionStart.svg",
+            theme_icon=False
         )
 
         # Séparation entre outils et validation
@@ -132,6 +156,10 @@ class DEMEditorToolbar:
             not application_status.operation_in_progress
         )
 
+        self.undo_last_polygon_action.setEnabled(
+            application_status.has_selection
+        )
+
         self.adjust_elevation_action.setEnabled(
             application_status.has_selection
         )
@@ -140,7 +168,15 @@ class DEMEditorToolbar:
             application_status.has_selection
         )
 
-        self.undo_last_polygon_action.setEnabled(
+        self.external_algo_action.setEnabled(
+            application_status.has_selection
+        )
+
+        self.raster_calc_action.setEnabled(
+            application_status.has_selection
+        )
+
+        self.user_expression_action.setEnabled(
             application_status.has_selection
         )
 

@@ -14,6 +14,9 @@ from .geom_processor import DEMGeometryProcessor
 from .dem_algo_wrapper import DEMAlgorithmWrapper
 from .adjust_elevation_algo import AdjustElevationAlgorithm
 from .smooth_steps_algo import SmoothStepsAlgorithm
+from .external_algo import ExternalAlgorithm
+from .raster_calculator import RasterCalculatorAlgorithm
+from .user_expression import UserExpressionAlgorithm
 
 from typing import Type, cast
 
@@ -168,6 +171,18 @@ class DEMEditor:
 
     def smooth_steps(self):
         self.execute_operation(SmoothStepsAlgorithm)
+
+
+    def external_algorithm(self):
+        self.execute_operation(ExternalAlgorithm)
+
+
+    def raster_calculator(self):
+        self.execute_operation(RasterCalculatorAlgorithm)
+
+
+    def user_expression(self):
+        self.execute_operation(UserExpressionAlgorithm)
 
 
     def undo_last_polygon(self):
