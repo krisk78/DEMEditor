@@ -2,6 +2,7 @@
 /qgis_stubs
 /typings
 .vscode/settings.json
+DEMEditor/dem_debug.py
 DEMEditor/__pycache__
 DEMEditor/__pycache__/dem_editor.cpython-312.pyc
 DEMEditor/__pycache__/dem_tool.cpython-312.pyc
