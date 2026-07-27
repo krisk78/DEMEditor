@@ -53,6 +53,8 @@ Restart QGIS and enable the plugin.
 - Python 3
 - NumPy
 
+Earlier QGIS versions may work, but they are not tested and compatibility is not guaranteed.
+
 ---
 
 ## Usage
