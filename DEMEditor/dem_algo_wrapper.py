@@ -1,3 +1,11 @@
+# DEMEditor
+# Copyright (C) 2026 Christophe Couaillet
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+
 from .edit_context import DEMEditContext
 from .pixel_filter import PolygonFilter
 from .qt_utils import set_parameter_enabled
