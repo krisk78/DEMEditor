@@ -21,6 +21,8 @@ With DEMEditor you can open an editing session and:
 
 ### From QGIS Plugin Manager
 
+Available soon...
+
 1. Open QGIS.
 2. Go to:
     Plugins → Manage and Install Plugins
