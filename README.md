@@ -67,16 +67,16 @@ Earlier QGIS versions may work, but they are not tested and compatibility is not
     You can draw several polygons.
     The button Undo removes the last drawn polygon.
    
-3. Select the processing algorithm.
-4. Configure the algorithm parameters.
-5. Run the algorithm.
+4. Select the processing algorithm.
+5. Configure the algorithm parameters.
+6. Run the algorithm.
 
     The output raster is generated as a temporary layer.
     Each new processing result replaces the previous one and becomes the input raster for subsequent transformations.
 
-6. Repeat the process for next transformations.
+7. Repeat the process for next transformations.
 
-7. Validate or cancel the session when finished.
+8. Validate or cancel the session when finished.
 
 The validation ends the editing session:
 - existing selection polygons are removed;
