@@ -115,6 +115,23 @@ The transition can be controlled through:
 - interpolation profile;
 - elevation priority mode.
 
+### External algorithm
+
+Uses a QGIS (native), GDAL or GRASS algorithm to perform the transformation, in the context of DEM Editor.
+
+A first parameter dialog is displayed to select:
+- the input layer (only if the DEM Editor session has just been started);
+- the algorithm to execute;
+- the elevation filter values.
+
+This dialog must be executed to prepare the inputs for the selected external algorithm.
+
+The external algorithm dialog is then displayed, pre-filled with DEM Editor parameters and using drawn polygons as the processing area.
+
+Currently, only grass:r.neighbors is implemented.
+
+Feel free to suggest other raster algorithms that could be useful. They are very easy to integrate into the framework.
+
 ---
 
 ## Development
