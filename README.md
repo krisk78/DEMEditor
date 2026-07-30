@@ -47,11 +47,9 @@ Restart QGIS and enable the plugin.
 
 ---
 
-## Requirements
+## Compatibility
 
-- QGIS 4.x
-- Python 3
-- NumPy
+The plugin has been tested with QGIS 3.44.
 
 Earlier QGIS versions may work, but they are not tested and compatibility is not guaranteed.
 
