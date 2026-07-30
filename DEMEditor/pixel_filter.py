@@ -6,6 +6,8 @@
 # the Free Software Foundation, either version 3 of the License, or
 # any later version.
 
+from .geom_processor import DEMGeometryProcessor
+
 from abc import ABC, abstractmethod
 from qgis.core import QgsPointXY, QgsGeometry, QgsRasterLayer
 
@@ -71,6 +73,15 @@ class PolygonFilter(PixelFilter):
         self.geometries = geometries
 
     def candidate_windows(self, layer: QgsRasterLayer) -> list[tuple[int, int, int, int]]:
+
+        # Geometry is defined using project CRS
+        DEMGeometryProcessor.validate_raster_context(layer)
+
+        # clip geometry outside the layer extent
+        self.geometries = DEMGeometryProcessor.clip_geometries(
+            geometries=self.geometries,
+            raster_layer=layer
+        )
 
         candidate_windows = []
 

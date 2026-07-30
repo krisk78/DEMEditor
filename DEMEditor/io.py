@@ -14,11 +14,13 @@ from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem
 
 import numpy as np
 
+
 @dataclass
 class RasterData:
     array: np.ndarray
     geo_transform: tuple
     nodata: float
+
 
 def save_geotiff(
         arr: np.ndarray,

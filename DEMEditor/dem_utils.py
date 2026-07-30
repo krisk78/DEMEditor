@@ -6,10 +6,11 @@
 # the Free Software Foundation, either version 3 of the License, or
 # any later version.
 
-from qgis.core import QgsRasterLayer
+from qgis.core import QgsRasterLayer, QgsProject
 
 import numpy as np
 from collections import deque
+from pathlib import Path
 
 
 def meters_to_pixels(layer: QgsRasterLayer, distance: float) -> int:
@@ -57,3 +58,32 @@ def group_points(points: np.ndarray) -> list[list[tuple[int, int]]]:
         groups.append(group)
 
     return groups
+
+
+def add_project_layer_from_source(
+        source: str,
+        name: str
+) -> QgsRasterLayer|None:
+
+    layer = QgsRasterLayer(source, name)
+
+    if not layer.isValid():
+        return None
+
+    instance = QgsProject.instance()
+    assert instance is not None
+    instance.addMapLayer(layer)
+
+    return layer
+
+
+def remove_project_layer_by_source(
+        source: str
+):
+
+    instance = QgsProject.instance()
+    assert instance is not None
+
+    for layer in instance.mapLayers().values():
+        if Path(layer.source()) == Path(source):
+            instance.removeMapLayer(layer.id())

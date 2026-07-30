@@ -9,7 +9,7 @@
 from .pixel_filter import *
 from .io import *
 from . import algorithm_context
-from .dem_utils import meters_to_pixels, group_points
+from .dem_utils import meters_to_pixels
 #from .dem_debug import *
 
 from qgis.core import (
@@ -216,7 +216,6 @@ class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
         transition_radius = meters_to_pixels(input_layer, radius)
         transition_type = TransitionType(interpol)
         edge_priority = EdgePriority(priority)
-#        circle_radius = meters_to_pixels(input_layer, self.CIRCLE_RADIUS)
 
         filter: PixelFilter|None = None
         if _dem_editor:

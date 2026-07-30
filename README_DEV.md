@@ -31,5 +31,5 @@ The recommended development environment is:
 
 ## Compatibility
 
-The plugin has been tested on a QGIS 4 environment.
-No compatibility with previous QGIS versions is guaranteed.
+The plugin has been tested on a QGIS 3.44 environment.
+No compatibility with previous or later QGIS versions is guaranteed.

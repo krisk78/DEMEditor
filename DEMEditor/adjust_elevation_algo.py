@@ -9,12 +9,13 @@
 from .pixel_filter import *
 from .io import *
 from . import algorithm_context
+from .geom_processor import DEMGeometryProcessor
 
 from qgis.core import (
     Qgis,
     QgsProcessingAlgorithm,
     QgsProcessingContext,
-    QgsProcessingException,
+    QgsProcessingException, # pyright: ignore[reportAttributeAccessIssue]
     QgsProcessingParameterBoolean,
     QgsProcessingParameterRasterLayer,
     QgsProcessingParameterRasterDestination,
@@ -149,7 +150,7 @@ class AdjustElevationAlgorithm(QgsProcessingAlgorithm):
 
         if input_layer is None:
             raise QgsProcessingException(self.tr("Invalid input raster"))
-        
+
         filter: PixelFilter|None = None
         if _dem_editor:
             filter = algorithm_context._filter

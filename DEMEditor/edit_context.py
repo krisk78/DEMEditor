@@ -16,3 +16,4 @@ class DEMEditContext:
 
     input_layer: QgsRasterLayer | None
     geometries: list[QgsGeometry]
+    wrapper_algo: bool = False

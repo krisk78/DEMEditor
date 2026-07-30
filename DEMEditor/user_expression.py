@@ -13,6 +13,8 @@ from qgis.core import (
 )
 from qgis.PyQt.QtCore import QCoreApplication
 
+from typing import Any
+
 
 class UserExpressionAlgorithm(QgsProcessingAlgorithm):
 
@@ -55,4 +57,7 @@ class UserExpressionAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context: QgsProcessingContext, feedback):
         raise QgsProcessingException("Not yet implemented")
-    
+
+
+    def post_processing(self, results: dict[str, Any]) -> str|None:
+        return ""

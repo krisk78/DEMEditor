@@ -127,7 +127,7 @@ class DEMEditor:
             self.toolbar.update_actions(self.application_status)
 
 
-    def prepare_operation(self) -> DEMEditContext:
+    def prepare_operation(self, is_a_wrapper: bool=False) -> DEMEditContext:
 
         layer = None
         if self.current_layer_id:
@@ -137,16 +137,21 @@ class DEMEditor:
 
         context = DEMEditContext(
             input_layer=cast(QgsRasterLayer, layer),
-            geometries=DEMGeometryProcessor.prepare(
+            geometries=DEMGeometryProcessor.merge_geometries(
                 self.selected_geometries
-            )
+            ),
+            wrapper_algo=is_a_wrapper
         )
         return context
     
 
-    def execute_operation(self, algorithm_cls: Type[QgsProcessingAlgorithm]):
+    def execute_operation(
+            self,
+            algorithm_cls: Type[QgsProcessingAlgorithm],
+            is_a_wrapper: bool=False
+    ):
 
-        context = self.prepare_operation()
+        context = self.prepare_operation(is_a_wrapper)
         new_layer = DEMAlgorithmWrapper().run(algorithm_cls, context)
         self.end_operation(new_layer)
     
@@ -174,15 +179,15 @@ class DEMEditor:
 
 
     def external_algorithm(self):
-        self.execute_operation(ExternalAlgorithm)
+        self.execute_operation(ExternalAlgorithm, is_a_wrapper=True)
 
 
     def raster_calculator(self):
-        self.execute_operation(RasterCalculatorAlgorithm)
+        self.execute_operation(RasterCalculatorAlgorithm, is_a_wrapper=True)
 
 
     def user_expression(self):
-        self.execute_operation(UserExpressionAlgorithm)
+        self.execute_operation(UserExpressionAlgorithm, is_a_wrapper=True)
 
 
     def undo_last_polygon(self):

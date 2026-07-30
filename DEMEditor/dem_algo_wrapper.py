@@ -10,11 +10,15 @@ from .edit_context import DEMEditContext
 from .pixel_filter import PolygonFilter
 from .qt_utils import set_parameter_enabled
 from . import algorithm_context
-
-from typing import Type, cast
+from .external_algo import ExternalAlgorithm
+from .raster_calculator import RasterCalculatorAlgorithm
+from .user_expression import UserExpressionAlgorithm
 
 from qgis.core import QgsProcessingAlgorithm, QgsProject, QgsRasterLayer
 import processing
+
+from pathlib import Path
+from typing import Type, cast
 
 
 class DEMAlgorithmWrapper:
@@ -40,14 +44,32 @@ class DEMAlgorithmWrapper:
         algorithm_context._filter = PolygonFilter(context.geometries)
         result = dlg.exec()
 
-        output = dlg.results().get("OUTPUT")
+        if not dlg.results():
+            return None
+
+        if context.wrapper_algo:
+            alg = dlg.algorithm()
+            assert alg is not None
+            if algorithm_cls is ExternalAlgorithm:
+                alg = cast(ExternalAlgorithm, alg)
+            elif algorithm_cls is RasterCalculatorAlgorithm:
+                alg = cast(RasterCalculatorAlgorithm, alg)
+            elif algorithm_cls is UserExpressionAlgorithm:
+                alg = cast(UserExpressionAlgorithm, alg)
+            else:
+                raise NotImplementedError
+            output = alg.post_processing(dlg.results())
+
+        else:
+            output = dlg.results().get("OUTPUT")
+
         output_layer = None
         instance = QgsProject.instance()
-        if instance is not None:
+        if instance is not None and output is not None:
             for layer in instance.mapLayers().values():
                 if (
                     isinstance(layer, QgsRasterLayer)
-                    and layer.source() == output
+                    and Path(layer.source()) == Path(output)
                 ):
                     output_layer = layer
                     break

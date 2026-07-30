@@ -2,6 +2,6 @@
 name=DEMEditor
 description=Interactive DEM editing tool
 version=0.1
-qgisMinimumVersion=4.0
+qgisMinimumVersion=3.44
 qgisMaximumVersion=4.99
 author=Christophe COUAILLET-DEGREMONT
