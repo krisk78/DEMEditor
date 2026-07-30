@@ -445,10 +445,12 @@ class ExternalAlgorithm(QgsProcessingAlgorithm):
         remove_project_layer_by_source(crop_output)
         
         # inject result in original raster
-        raster_data.array[
-            layer_extent.y_min:layer_extent.y_max+1,
-            layer_extent.x_min:layer_extent.x_max+1
-        ] = new_raster.array
+        rows = np.array([p[0] for p in selection_points])
+        cols = np.array([p[1] for p in selection_points])
+        raster_data.array[rows, cols] = new_raster.array[
+            rows - layer_extent.y_min,
+            cols - layer_extent.x_min
+        ]
         temp_path = QgsProcessingUtils.generateTempFilename("output.tif")
         save_geotiff(
             arr=raster_data.array,
