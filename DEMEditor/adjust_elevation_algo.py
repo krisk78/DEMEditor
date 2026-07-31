@@ -184,6 +184,7 @@ class AdjustElevationAlgorithm(QgsProcessingAlgorithm):
         )
 
         return {
+            self.INPUT: input_layer,
             self.OUTPUT: output
         }
     

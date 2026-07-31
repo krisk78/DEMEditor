@@ -13,6 +13,7 @@ from . import algorithm_context
 from .external_algo import ExternalAlgorithm
 from .raster_calculator import RasterCalculatorAlgorithm
 from .user_expression import UserExpressionAlgorithm
+from .dem_utils import get_project
 
 from qgis.core import QgsProcessingAlgorithm, QgsProject, QgsRasterLayer
 import processing
@@ -47,6 +48,12 @@ class DEMAlgorithmWrapper:
         if not dlg.results():
             return None
 
+        # get the source layer renderer
+        renderer = None
+        input_raster = dlg.results().get("INPUT")
+        if input_raster is not None:
+            renderer = input_raster.renderer().clone()
+
         if context.wrapper_algo:
             alg = dlg.algorithm()
             assert alg is not None
@@ -72,6 +79,10 @@ class DEMAlgorithmWrapper:
                     and Path(layer.source()) == Path(output)
                 ):
                     output_layer = layer
+                    # set same renderer as source layer
+                    if renderer is not None:
+                        output_layer.setRenderer(renderer)
+                        output_layer.triggerRepaint()
                     break
 
         return output_layer

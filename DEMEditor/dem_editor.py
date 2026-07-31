@@ -17,11 +17,13 @@ from .smooth_steps_algo import SmoothStepsAlgorithm
 from .external_algo import ExternalAlgorithm
 from .raster_calculator import RasterCalculatorAlgorithm
 from .user_expression import UserExpressionAlgorithm
+from .qt_utils import display_important_warning
 
 from typing import Type, cast
 
 from qgis.core import QgsProject, QgsRasterLayer, QgsProcessingAlgorithm
 from qgis.gui import QgisInterface, QgsMapCanvas
+from qgis.PyQt.QtWidgets import QMessageBox
 
 
 class DEMEditor:
@@ -245,6 +247,21 @@ class DEMEditor:
         if self.current_layer_id:
             layer = self.instance.mapLayer(self.current_layer_id)
             if layer:
+                main_window = self.iface.mainWindow()
+                assert main_window is not None
+                if not display_important_warning(
+                    parent_widget=main_window,
+                    title="Cancel DEM Editor session",
+                    text="A temporary layer has been created during this session.",
+                    information=(
+                        "If you continue, it will be removed from the project.\n\n"
+                        "Please confirm you want to cancel the current session."
+                    ),
+                    confirm="Discard session",
+                    cancel="Continue editing"
+                ):
+                    return
+                
                 self.instance.removeMapLayer(self.current_layer_id)
                 self.map_canvas.refresh()
         

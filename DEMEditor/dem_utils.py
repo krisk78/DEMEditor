@@ -60,19 +60,23 @@ def group_points(points: np.ndarray) -> list[list[tuple[int, int]]]:
     return groups
 
 
+def get_project() -> QgsProject:
+
+    instance = QgsProject.instance()
+    assert instance is not None
+    return instance
+
+
 def add_project_layer_from_source(
         source: str,
         name: str
 ) -> QgsRasterLayer|None:
 
     layer = QgsRasterLayer(source, name)
-
     if not layer.isValid():
         return None
-
-    instance = QgsProject.instance()
-    assert instance is not None
-    instance.addMapLayer(layer)
+    
+    get_project().addMapLayer(layer)
 
     return layer
 
@@ -81,9 +85,22 @@ def remove_project_layer_by_source(
         source: str
 ):
 
-    instance = QgsProject.instance()
-    assert instance is not None
+    layer_id = get_project_layer_id_from_source(source)
 
-    for layer in instance.mapLayers().values():
+    if layer_id is not None:
+        get_project().removeMapLayer(layer_id)
+
+
+def get_project_layer_id_from_source(
+        source: str
+) -> str|None:
+
+    project = get_project()
+
+    layer_id = None
+    for layer in project.mapLayers().values():
         if Path(layer.source()) == Path(source):
-            instance.removeMapLayer(layer.id())
+            layer_id = layer.id()
+            break
+
+    return layer_id

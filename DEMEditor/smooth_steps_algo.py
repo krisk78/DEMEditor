@@ -16,7 +16,7 @@ from qgis.core import (
     Qgis,
     QgsProcessingAlgorithm,
     QgsProcessingContext,
-    QgsProcessingException,
+    QgsProcessingException, # pyright: ignore[reportAttributeAccessIssue]
     QgsProcessingParameterBoolean,
     QgsProcessingParameterRasterLayer,
     QgsProcessingParameterRasterDestination,
@@ -272,6 +272,7 @@ class SmoothStepsAlgorithm(QgsProcessingAlgorithm):
         )
 
         return {
+            self.INPUT: input_layer,
             self.OUTPUT: output
         }
 
