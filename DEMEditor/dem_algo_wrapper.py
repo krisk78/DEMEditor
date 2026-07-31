@@ -13,12 +13,11 @@ from . import algorithm_context
 from .external_algo import ExternalAlgorithm
 from .raster_calculator import RasterCalculatorAlgorithm
 from .user_expression import UserExpressionAlgorithm
-from .dem_utils import get_project
+from .dem_utils import get_project_layer_from_source
 
-from qgis.core import QgsProcessingAlgorithm, QgsProject, QgsRasterLayer
+from qgis.core import QgsProcessingAlgorithm
 import processing
 
-from pathlib import Path
 from typing import Type, cast
 
 
@@ -70,20 +69,14 @@ class DEMAlgorithmWrapper:
         else:
             output = dlg.results().get("OUTPUT")
 
-        output_layer = None
-        instance = QgsProject.instance()
-        if instance is not None and output is not None:
-            for layer in instance.mapLayers().values():
-                if (
-                    isinstance(layer, QgsRasterLayer)
-                    and Path(layer.source()) == Path(output)
-                ):
-                    output_layer = layer
-                    # set same renderer as source layer
-                    if renderer is not None:
-                        output_layer.setRenderer(renderer)
-                        output_layer.triggerRepaint()
-                    break
+        if output is None:
+            return None
+        
+        output_layer = get_project_layer_from_source(output)
+        if output_layer is not None and renderer is not None:
+            # set same renderer as source layer
+            output_layer.setRenderer(renderer)
+            output_layer.triggerRepaint()
 
         return output_layer
     

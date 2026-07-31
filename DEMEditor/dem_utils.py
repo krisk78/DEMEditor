@@ -85,22 +85,22 @@ def remove_project_layer_by_source(
         source: str
 ):
 
-    layer_id = get_project_layer_id_from_source(source)
+    layer = get_project_layer_from_source(source)
 
-    if layer_id is not None:
-        get_project().removeMapLayer(layer_id)
+    if layer is not None:
+        get_project().removeMapLayer(layer.id())
 
 
-def get_project_layer_id_from_source(
+def get_project_layer_from_source(
         source: str
-) -> str|None:
+) -> QgsRasterLayer|None:
 
     project = get_project()
 
-    layer_id = None
+    project_layer = None
     for layer in project.mapLayers().values():
         if Path(layer.source()) == Path(source):
-            layer_id = layer.id()
+            project_layer = layer
             break
 
-    return layer_id
+    return project_layer
